@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import data from "@/utils/estados-cidades.json";
 
 type Estado = {
@@ -93,6 +94,91 @@ export default function Home() {
 
   const itemsFiltrados = useMemo(() => items, [items]);
 
+  const DetailsModal = ({ unit, onClose }: { unit: Unit; onClose: () => void }) => {
+    return createPortal(
+      <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/30 p-4">
+        <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/40 bg-white/80 shadow-2xl backdrop-blur-2xl">
+          <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-sky-400 via-cyan-400 to-emerald-300" />
+          <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Detalhes</p>
+              <h3 className="text-xl font-semibold text-zinc-900 leading-tight">
+                {unit.nome}
+              </h3>
+              <p className="text-sm text-zinc-600 mt-1">
+                {unit.tipo ?? "—"} · {unit.unimed ?? "Unimed"} · {unit.cidade}/{unit.uf}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-9 rounded-full bg-zinc-900 px-4 text-xs font-semibold text-white shadow hover:bg-zinc-800"
+            >
+              Fechar
+            </button>
+          </div>
+
+          <div className="grid max-h-[80vh] gap-4 overflow-auto px-5 pb-5 md:grid-cols-2">
+            <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-zinc-500">Endereço</p>
+                <a
+                  href={unit.enderecoCompleto ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(unit.enderecoCompleto)}` : undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-sky-700 hover:text-sky-800 disabled:opacity-40"
+                  aria-disabled={!unit.enderecoCompleto}
+                >
+                  Ver no Maps
+                </a>
+              </div>
+              <p className="mt-1 text-sm text-zinc-800 leading-relaxed">
+                {unit.enderecoCompleto ?? "—"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
+              <p className="text-xs font-medium text-zinc-500">Contato</p>
+              <p className="mt-1 text-sm text-zinc-800">Telefone: {unit.telefone ?? "—"}</p>
+              <p className="text-sm text-zinc-800">Unimed: {unit.unimed ?? "—"}</p>
+            </div>
+
+            <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
+              <p className="text-xs font-medium text-zinc-500">Especialidades</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(unit.especialidades ?? []).length === 0 ? (
+                  <span className="text-sm text-zinc-600">—</span>
+                ) : (
+                  (unit.especialidades ?? []).map((esp) => (
+                    <span
+                      key={esp}
+                      className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
+                    >
+                      {esp}
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
+              <p className="text-xs font-medium text-zinc-500">Convênio</p>
+              <p className="mt-1 text-sm text-zinc-800">{unit.unimed ?? "—"}</p>
+              <div className="mt-3 flex gap-3 text-sm text-zinc-800">
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 ring-1 ring-black/5">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /> Superior: {unit.superior ? "Sim" : "Não"}
+                </span>
+                <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 ring-1 ring-black/5">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" /> Senior: {unit.senior ? "Sim" : "Não"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  };
+
   return (
     <div className="min-h-dvh bg-linear-to-br from-zinc-50 to-sky-50 p-6 md:p-10">
       <div className="mx-auto max-w-3xl">
@@ -109,6 +195,10 @@ export default function Home() {
             <p className="text-sm text-zinc-600">
               Selecione UF e cidade, depois clique em Buscar para carregar os resultados.
             </p>
+            <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+              Instabilidade no servidor · A busca pode demorar um pouco.
+            </span>
           </header>
 
           <form
@@ -226,12 +316,44 @@ export default function Home() {
             )}
 
             {loading ? (
-              <div className="flex items-center gap-2 text-sm text-zinc-600">
-                <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-500" aria-label="Carregando" />
-                Carregando…
+              <div className="flex items-center gap-3 rounded-xl border border-white/60 bg-white/80 px-4 py-3 text-zinc-700 shadow-sm ring-1 ring-black/5">
+                <span
+                  className="inline-flex h-7 w-7 animate-spin rounded-full border-4 border-zinc-300 border-t-zinc-600"
+                  aria-label="Carregando"
+                />
+                <span className="text-base font-medium">Carregando…</span>
+                <span className="text-sm text-zinc-600">Isso pode demorar um pouco, por favor, tenha paciência.</span>
               </div>
             ) : !query ? (
-              <p className="text-sm text-zinc-600">Selecione estado, cidade e clique em Buscar.</p>
+              <div className="rounded-2xl border border-white/60 bg-white/70 p-5 text-zinc-800 shadow-sm ring-1 ring-black/5">
+                <h3 className="text-sm font-semibold text-zinc-900">Como funciona</h3>
+                <ol className="mt-3 space-y-2 text-sm">
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-semibold text-zinc-700 ring-1 ring-black/5">1</span>
+                    <span>Escolha a UF (sigla). A lista de cidades será atualizada automaticamente.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-semibold text-zinc-700 ring-1 ring-black/5">2</span>
+                    <span>Selecione a cidade correspondente.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-semibold text-zinc-700 ring-1 ring-black/5">3</span>
+                    <span>Clique em <span className="font-medium">Buscar</span> para consultar a rede credenciada.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-semibold text-zinc-700 ring-1 ring-black/5">4</span>
+                    <span>Os resultados aparecem em uma tabela com <span className="font-medium">Nome</span>, <span className="font-medium">Tipo</span>, <span className="font-medium">Superior</span> e <span className="font-medium">Senior</span>.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-semibold text-zinc-700 ring-1 ring-black/5">5</span>
+                    <span>Clique em uma linha para abrir o modal de detalhes: endereço (com link para Google Maps), contato, convênio e especialidades.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-semibold text-zinc-700 ring-1 ring-black/5">6</span>
+                    <span>Você pode ajustar <span className="font-medium">Itens por página</span> e navegar entre páginas.</span>
+                  </li>
+                </ol>
+              </div>
             ) : itemsFiltrados.length === 0 ? (
               <p className="text-sm text-zinc-600">Sem resultados para os filtros atuais.</p>
             ) : (
@@ -287,87 +409,7 @@ export default function Home() {
             </div>
           </section>
 
-          {selected && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-              <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/40 bg-white/80 shadow-2xl backdrop-blur-2xl">
-                <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-sky-400 via-cyan-400 to-emerald-300" />
-                <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Detalhes</p>
-                    <h3 className="text-xl font-semibold text-zinc-900 leading-tight">
-                      {selected.nome}
-                    </h3>
-                    <p className="text-sm text-zinc-600 mt-1">
-                      {selected.tipo ?? "—"} · {selected.unimed ?? "Unimed"} · {selected.cidade}/{selected.uf}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="h-9 rounded-full bg-zinc-900 px-4 text-xs font-semibold text-white shadow hover:bg-zinc-800"
-                  >
-                    Fechar
-                  </button>
-                </div>
-
-                <div className="grid gap-4 px-5 pb-5 md:grid-cols-2">
-                  <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-zinc-500">Endereço</p>
-                      <a
-                        href={selected.enderecoCompleto ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.enderecoCompleto)}` : undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-semibold text-sky-700 hover:text-sky-800 disabled:opacity-40"
-                        aria-disabled={!selected.enderecoCompleto}
-                      >
-                        Ver no Maps
-                      </a>
-                    </div>
-                    <p className="mt-1 text-sm text-zinc-800 leading-relaxed">
-                      {selected.enderecoCompleto ?? "—"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
-                    <p className="text-xs font-medium text-zinc-500">Contato</p>
-                    <p className="mt-1 text-sm text-zinc-800">Telefone: {selected.telefone ?? "—"}</p>
-                    <p className="text-sm text-zinc-800">Unimed: {selected.unimed ?? "—"}</p>
-                  </div>
-
-                  <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
-                    <p className="text-xs font-medium text-zinc-500">Especialidades</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(selected.especialidades ?? []).length === 0 ? (
-                        <span className="text-sm text-zinc-600">—</span>
-                      ) : (
-                        (selected.especialidades ?? []).map((esp) => (
-                          <span
-                            key={esp}
-                            className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
-                          >
-                            {esp}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-white/60 bg-white/60 p-4 shadow-sm ring-1 ring-black/5">
-                    <p className="text-xs font-medium text-zinc-500">Convênio</p>
-                    <p className="mt-1 text-sm text-zinc-800">{selected.unimed ?? "—"}</p>
-                    <div className="mt-3 flex gap-3 text-sm text-zinc-800">
-                      <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 ring-1 ring-black/5">
-                        <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /> Superior: {selected.superior ? "Sim" : "Não"}
-                      </span>
-                      <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 ring-1 ring-black/5">
-                        <span className="inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" /> Senior: {selected.senior ? "Sim" : "Não"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {selected && <DetailsModal unit={selected} onClose={() => setSelected(null)} />}
         </div>
       </div>
     </div>
