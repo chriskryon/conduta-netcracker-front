@@ -15,9 +15,10 @@ export default function Home() {
   const estados: Estado[] = (data as { estados: Estado[] }).estados;
   const [estado, setEstado] = useState<string>("");
   const [cidade, setCidade] = useState<string>("");
+  const [nome, setNome] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(50);
-  const [query, setQuery] = useState<{ uf: string; cidade: string } | null>(null);
+  const [query, setQuery] = useState<{ uf: string; cidade: string; nome?: string } | null>(null);
 
   type Unit = {
     nome: string;
@@ -56,7 +57,7 @@ export default function Home() {
       setLoading(true);
       setError("");
       try {
-        const url = `${API_BASE}/units`;
+        const url = `${API_BASE}${query?.nome ? "/units/search" : "/units"}`;
         const res = await axios.get<ApiResponse>(url, {
           signal: controller.signal,
           params: {
@@ -64,6 +65,7 @@ export default function Home() {
             cidade: query.cidade,
             page,
             limit,
+            ...(query?.nome ? { nome: query.nome } : {}),
           },
           headers: { Accept: "application/json; charset=utf-8" },
         });
@@ -202,7 +204,7 @@ export default function Home() {
           </header>
 
           <form
-            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            className="grid grid-cols-1 gap-4 md:grid-cols-3"
             onSubmit={(e) => {
               e.preventDefault();
               if (!estado || !cidade) {
@@ -210,7 +212,7 @@ export default function Home() {
                 return;
               }
               setPage(1);
-              setQuery({ uf: estado, cidade });
+              setQuery({ uf: estado, cidade, nome: nome.trim() || undefined });
             }}
           >
             <label className="flex flex-col gap-2">
@@ -249,7 +251,18 @@ export default function Home() {
                 ))}
               </select>
             </label>
-            <div className="md:col-span-2 flex items-end justify-between">
+
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-zinc-700">Nome (opcional)</span>
+              <input
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex.: ATIVA"
+                className="h-11 w-full rounded-xl border border-white/60 bg-white/70 px-4 text-zinc-900 shadow-sm outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100/80"
+              />
+            </label>
+            <div className="md:col-span-3 flex items-end justify-between">
               <button
                 type="submit"
                 className="h-11 rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white shadow hover:bg-zinc-800 disabled:opacity-60"
@@ -262,6 +275,7 @@ export default function Home() {
                 onClick={() => {
                   setEstado("");
                   setCidade("");
+                  setNome("");
                   setItems([]);
                   setTotal(0);
                   setPage(1);
